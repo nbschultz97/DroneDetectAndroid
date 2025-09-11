@@ -1,3 +1,4 @@
 # Generated binary assets
-app/
+app/src/main/assets/
+app/src/main/res/drawable/
 __pycache__/
