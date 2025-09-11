@@ -8,6 +8,7 @@ vendors and writes them to a JSON asset.
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 from typing import List
 
@@ -26,7 +27,8 @@ def extract_ouis(csv_path: Path) -> List[str]:
             name = row.get("Organization Name", "").upper()
             for key in DRONE_KEYWORDS:
                 if key in name:
-                    ouis.add(row["Assignment"].upper())
+                    assignment = re.sub("[^0-9A-F]", "", row["Assignment"].upper())
+                    ouis.add(assignment)
                     break
     return sorted(ouis)
 
