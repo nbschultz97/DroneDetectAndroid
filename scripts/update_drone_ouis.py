@@ -9,6 +9,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
+from typing import List
 
 # Keywords identifying drone manufacturers in the IEEE registry
 DRONE_KEYWORDS = ["DJI", "PARROT", "SKYDIO"]
@@ -17,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSET_PATH = ROOT / "assets" / "drone_ouis.json"
 
 
-def extract_ouis(csv_path: Path) -> list[str]:
+def extract_ouis(csv_path: Path) -> List[str]:
     ouis: set[str] = set()
     with csv_path.open(newline="") as fh:
         reader = csv.DictReader(fh)
@@ -46,7 +47,7 @@ def main() -> None:
     ouis = extract_ouis(csv_path)
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(ouis, indent=2))
+    out_path.write_text(json.dumps(ouis, indent=2) + "\n")
     print(f"wrote {len(ouis)} OUIs -> {out_path}")
 
 
