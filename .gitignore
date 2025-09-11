@@ -1,3 +1,6 @@
-# Generated binary assets
-app/
+# Generated binary assets and build outputs
+app/build/
+app/src/main/assets/
+app/src/main/res/
+
 __pycache__/
