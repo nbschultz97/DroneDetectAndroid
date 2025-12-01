@@ -1,3 +1,16 @@
-# Generated binary assets
-__pycache__/
-gradle/wrapper/gradle-wrapper.jar
+# Gradle and build outputs
+.gradle/
+build/
+app/build/
+
+# Local Android Studio config
+.idea/
+*.iml
+local.properties
+
+# Generated assets from bootstrap
+app/src/main/assets/
+app/src/main/res/drawable/*.png
+
+# OS cruft
+.DS_Store

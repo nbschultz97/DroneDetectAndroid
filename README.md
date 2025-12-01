@@ -1,32 +1,39 @@
 # DroneDetectAndroid
 
-This repo hosts Android-side utilities for drone rotor detection.
-Binary assets (TensorFlow Lite model and icons) are stored in base64 to
-keep the repo lean for air-gapped deployments.
+Android-side utilities for rotor detection and Wi‑Fi reconnaissance. Assets ship as base64 to keep the repo lean for air-gapped deployments and are restored automatically during Gradle builds.
 
 ## Bootstrap
 
-After cloning, restore the binary assets:
+After cloning, restore the binary assets (TensorFlow Lite model and PNG drawables):
 
 ```bash
 python3 scripts/bootstrap_assets.py
 ```
 
-This will recreate the `rotor_v1.tflite` model and the required PNG
-drawables under `app/src/main/...`.
+Gradle also depends on this script via the `preBuild` hook, so IDE and CI builds will automatically decode assets into `app/src/main/...` if Python is available.
 
 ## Pipeline
 
-1. **Asset bootstrap** – Decode the model and icons from `assets/*.b64` using the script above. Generated files land under `app/src/main/...`.
-2. **Runtime wiring** – `MainActivity` creates a `DroneSignalDetector`, which launches a coroutine to fetch flight data and schedule Wi‑Fi scans.
-3. **Scan handling** – `WifiScanReceiver` receives scan results. Future work will feed the TFLite model for rotor classification.
+1. **Asset bootstrap** – Decode the model and icons from `assets/*.b64` using the script above (or let Gradle call it).
+2. **Runtime wiring** – `MainActivity` requests Wi‑Fi/location permissions, wires a simple UI, and calls `DroneSignalDetector.startScan()`.
+3. **Scan handling** – `DroneSignalDetector` schedules repeated `WifiManager.startScan()` calls, ingests stub flight data, and surfaces scan results plus the last telemetry snapshot to the UI via callbacks.
+
+## Building
+
+This repo ships a minimal Gradle wrapper script for offline/air-gapped work. Supply a compatible `gradle/wrapper/gradle-wrapper.jar` (from Gradle 8.2.1) in your environment, then run:
+
+```bash
+./gradlew assembleDebug
+```
+
+If you prefer a hosted toolchain, open the project in Android Studio (Giraffe+), accept SDK prompts, and build the `app` module. Remember to run the asset bootstrap script if Python is missing from your build host.
 
 ## Testing
 
-Verify the asset bootstrap step restores the binaries:
+To validate the asset bootstrap step:
 
 ```bash
 python3 scripts/bootstrap_assets.py
 ```
 
-Each asset should report a `decoded` message. Remove the generated `app/src/main/assets` and `app/src/main/res` directories after testing to keep the repo text‑only.
+Each asset should report a `decoded` message. Remove the generated `app/src/main/assets` and `app/src/main/res/drawable` contents after testing to keep the repo text‑only.
