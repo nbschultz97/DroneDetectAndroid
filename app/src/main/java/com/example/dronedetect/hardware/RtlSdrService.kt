@@ -25,10 +25,11 @@ class RtlSdrService : Service() {
     private val binder = LocalBinder()
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var isScanning = false
+    private var rtlSdrScanner: RtlSdrScanner? = null
 
-    // Callbacks for detection events
-    var onDroneDetected: ((DroneDetection) -> Unit)? = null
-    var onSpectrumUpdate: ((SpectrumData) -> Unit)? = null
+    // Callbacks for detection events (forward from scanner)
+    var onDroneDetected: ((RtlSdrScanner.DroneDetection) -> Unit)? = null
+    var onSpectrumUpdate: ((RtlSdrScanner.SpectrumData) -> Unit)? = null
 
     companion object {
         private const val TAG = "RtlSdrService"
@@ -71,22 +72,48 @@ class RtlSdrService : Service() {
     /**
      * Start RTL-SDR scanning
      */
-    fun startScanning() {
+    fun startScanning(host: String = "127.0.0.1", port: Int = 1234) {
         if (isScanning) {
             Log.w(TAG, "Already scanning")
             return
         }
 
         isScanning = true
-        updateNotification("Scanning RF spectrum...")
+        updateNotification("Connecting to RTL-SDR...")
 
         serviceScope.launch {
             try {
-                // TODO: Integrate with rtl_tcp_andro or native RTL-SDR library
-                // For now, simulate scanning
-                simulateRtlSdrScanning()
+                // Create scanner if not exists
+                if (rtlSdrScanner == null) {
+                    rtlSdrScanner = RtlSdrScanner().apply {
+                        // Forward callbacks
+                        onDroneDetected = { detection ->
+                            this@RtlSdrService.onDroneDetected?.invoke(detection)
+                            updateNotification("⚠️ ${detection.classification} detected!")
+                        }
+                        onSpectrumUpdate = { spectrum ->
+                            this@RtlSdrService.onSpectrumUpdate?.invoke(spectrum)
+                        }
+                        onError = { error ->
+                            Log.e(TAG, "Scanner error: $error")
+                            updateNotification("Error: $error")
+                        }
+                    }
+                }
+
+                // Connect to rtl_tcp_andro
+                val connected = rtlSdrScanner?.connect(host, port) ?: false
+
+                if (connected) {
+                    updateNotification("Scanning 433 MHz / 915 MHz bands...")
+                    rtlSdrScanner?.startScanning()
+                } else {
+                    updateNotification("Failed to connect to RTL-SDR")
+                    isScanning = false
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error during RTL-SDR scanning", e)
+                updateNotification("Scanning error: ${e.message}")
                 isScanning = false
             }
         }
@@ -101,50 +128,9 @@ class RtlSdrService : Service() {
         }
 
         isScanning = false
+        rtlSdrScanner?.stopScanning()
         updateNotification("RF monitoring paused")
         Log.d(TAG, "RTL-SDR scanning stopped")
-    }
-
-    /**
-     * Simulate RTL-SDR scanning (placeholder for actual implementation)
-     *
-     * In production, this would:
-     * 1. Connect to rtl_tcp_andro via TCP socket (localhost:1234)
-     * 2. Receive IQ samples
-     * 3. Perform FFT analysis
-     * 4. Detect frequency hopping patterns (FHSS drone controllers)
-     */
-    private suspend fun simulateRtlSdrScanning() {
-        Log.d(TAG, "Starting simulated RTL-SDR scanning")
-
-        while (isScanning) {
-            delay(5000) // Scan every 5 seconds
-
-            // Simulate spectrum data
-            val spectrumData = SpectrumData(
-                centerFrequency = 433.0e6, // 433 MHz
-                sampleRate = 2048000,      // 2.048 MHz
-                timestamp = System.currentTimeMillis(),
-                powerSpectrum = FloatArray(1024) { -80f } // Dummy data
-            )
-
-            onSpectrumUpdate?.invoke(spectrumData)
-
-            // Simulate drone detection (10% chance)
-            if (Math.random() < 0.1) {
-                val detection = DroneDetection(
-                    frequency = 433.92e6,
-                    signalStrength = -65.0f,
-                    classification = "Unknown FHSS",
-                    confidence = 0.7f,
-                    timestamp = System.currentTimeMillis()
-                )
-
-                Log.d(TAG, "Simulated drone detection: ${detection.frequency / 1e6} MHz")
-                onDroneDetected?.invoke(detection)
-                updateNotification("⚠️ Drone detected at ${detection.frequency / 1e6} MHz")
-            }
-        }
     }
 
     private fun createNotificationChannel() {
@@ -192,27 +178,7 @@ class RtlSdrService : Service() {
         super.onDestroy()
         Log.d(TAG, "RTL-SDR Service destroyed")
         stopScanning()
+        rtlSdrScanner = null
         serviceScope.cancel()
     }
-
-    /**
-     * Data class representing RF spectrum data
-     */
-    data class SpectrumData(
-        val centerFrequency: Double,
-        val sampleRate: Int,
-        val timestamp: Long,
-        val powerSpectrum: FloatArray
-    )
-
-    /**
-     * Data class representing a drone detection event
-     */
-    data class DroneDetection(
-        val frequency: Double,
-        val signalStrength: Float,
-        val classification: String,
-        val confidence: Float,
-        val timestamp: Long
-    )
 }
