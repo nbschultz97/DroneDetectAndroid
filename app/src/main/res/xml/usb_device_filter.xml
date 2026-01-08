@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RTL2832U chipset (most common RTL-SDR dongles) -->
+    <usb-device
+        vendor-id="2972"
+        product-id="10296" />
+
+    <!-- Alternative product ID for RTL-SDR Blog V3/V4 -->
+    <usb-device
+        vendor-id="2972"
+        product-id="10290" />
+
+    <!-- Generic RTL2832U devices -->
+    <usb-device
+        class="255"
+        subclass="255"
+        protocol="255" />
+</resources>
